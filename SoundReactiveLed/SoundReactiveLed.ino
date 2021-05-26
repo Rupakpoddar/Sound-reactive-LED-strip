@@ -1,12 +1,12 @@
 /* Written by Rupak Poddar */
 
-#include <FastLED.h>               // https://github.com/FastLED/FastLED
-#define NUMLEDS 144                // Number of LEDs
-#define DATA_PIN 3                   // Connect your addressable LED strip to this pin.
+#include <FastLED.h>              // https://github.com/FastLED/FastLED
+#define NUMLEDS 144               // Number of LEDs
+#define DATA_PIN 3                // Connect your addressable LED strip to this pin.
 #define SENSITIVITY 300           // Ranges from 0 to 1023
-#define MAX_BRIGHTNESS 200  // Ranges from 0 to 255
-#define ENVELOPE_PIN A0         // Connect sound detector to this pin
-#define SATURATION 150          // Ranges from 0 to 255
+#define MAX_BRIGHTNESS 200        // Ranges from 0 to 255
+#define ENVELOPE_PIN A0           // Connect sound detector to this pin
+#define SATURATION 150            // Ranges from 0 to 255
 #define MINVAL 60
 #define HUE_INIT 10
 #define HUE_CHANGE 1
