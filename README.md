@@ -1,4 +1,4 @@
-# Sound reactive LED strip
+# Sound Reactive Addressable LED Strip
 4 different styles for your sound reactive LED strip.
 
 watch the tutorial video at: https://youtu.be/w9_OhG3QlUg
