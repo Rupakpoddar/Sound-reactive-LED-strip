@@ -32,7 +32,7 @@ void setup()
   //
   //  Clear LED Strip
   //
-  for (int i=0; i<60; i++){
+  for (int i=0; i<NUM_LEDS; i++){
     leds[i] = CRGB(0, 0, 0);
   }
   FastLED.show();
