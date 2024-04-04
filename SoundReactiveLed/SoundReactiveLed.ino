@@ -1,131 +1,142 @@
-/* Written by Rupak Poddar */
+/* 
+  Written by Rupak Poddar
+  Last Updated: 03 April 2024
+*/
 
-#include <FastLED.h>              // https://github.com/FastLED/FastLED
-#define NUMLEDS 144               // Number of LEDs
-#define DATA_PIN 3                // Connect your addressable LED strip to this pin.
-#define SENSITIVITY 300           // Ranges from 0 to 1023
-#define MAX_BRIGHTNESS 200        // Ranges from 0 to 255
-#define ENVELOPE_PIN A0           // Connect sound detector to this pin
-#define SATURATION 150            // Ranges from 0 to 255
-#define MINVAL 60
-#define HUE_INIT 10
-#define HUE_CHANGE 1
+#include <FastLED.h>        // https://github.com/FastLED/FastLED
+FASTLED_USING_NAMESPACE
 
-CRGB leds[NUMLEDS];
-byte brightness[NUMLEDS];
-byte hue[NUMLEDS];
-int analogVal;
-int DELAY;
+#define NUM_LEDS         60 // Total Number of LEDs
+#define DATA_PIN          7 // Connect your Addressable LED Strip to this Pin.
+#define LED_TYPE     WS2811 // WS2801, WS2811, WS2812B, LPD8806, TM1809, etc...
+#define COLOR_ORDER     RGB // Default Color Order
+#define ENVELOPE_PIN     A0 // Envelope Pin of the Sparkfun Sound Detector Module
+
+#define BRIGHTNESS      200 // Min: 0, Max: 255
+#define SATURATION      150 // Min: 0, Max: 255
+#define MIN_VAL          10 // Min: 0, Max: 75
+#define MAX_VAL         150 // Min: 75, Max: 750
+#define HUE_INIT         10 // < 255
+#define HUE_CHANGE        2 // < 255
+
+/*============= SELECT STYLE =============*/
+/*                                        */
+/*    0   -->   LinearFlowing (BEST)      */
+/*    1   -->   LinearReactive            */
+/*    2   -->   BrightnessReactive        */
+/*    3   -->   CentreProgressive         */
+/*    4   -->   EdgeProgressive           */
+/*                                        */                                        
+/* */          int STYLE = 0;          /* */
+/*                                        */
+/*========================================*/
+
+CRGB leds[NUM_LEDS];
+byte dynamicHue = HUE_INIT;
+int analogVal = 0;
+int val = 0;
 
 void setup() { 
-  Serial.begin(9600);
   pinMode(ENVELOPE_PIN, INPUT);
-  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUMLEDS);
+  
+  FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
+  FastLED.setBrightness(BRIGHTNESS);
 
-  for(int i = 0; i <= NUMLEDS; i++){
-    brightness[i] = 0;
-    hue[i] = 0;
+  for(int i = 0; i < NUM_LEDS; i++) {
+    leds[i] = CRGB::Black;
   }
 
-  //Turn off all the LEDs
-  for(int i=0; i <= NUMLEDS; i++)  
-  {
-  leds[i] = CRGB::Black;
-  }
-
-  //Update the LED strip
+  // Update the LED Strip
   FastLED.show(); 
 }
 
 void loop() {
   analogVal = analogRead(ENVELOPE_PIN);
 
-  if(analogVal > SENSITIVITY)
-  analogVal = SENSITIVITY;
+  if(analogVal > MAX_VAL)
+    analogVal = MAX_VAL;
 
-  if(analogVal < MINVAL)
-  analogVal = 0;
-   
-/*----------------------------------------------------------
-  - 5 styles for sound reactive led strip are given below in different lines.
-  - Uncomment the function which you want to try and comment the others.
-  - "LinearFlowing" is uncommented by default.          
------------------------------------------------------------*/
+  if(analogVal < MIN_VAL)
+    analogVal = MIN_VAL;
 
-   LinearFlowing();
-  // LinearReactive();
-  // BrightnessReactive();
-  // CentreProgressive();
-  // EdgeProgressive();
+  switch (STYLE) {
+    case 1:
+      LinearReactive();
+      break;
+    case 2:
+      BrightnessReactive();
+      break;
+    case 3:
+      CentreProgressive();
+      break;
+    case 4:
+      EdgeProgressive();
+      break;
+    default:
+      LinearFlowing();
+      break;
+  }
   
+  // Update the LED Strip
   FastLED.show();
 }
 
-void LinearFlowing(){
-  byte val = map(analogVal, 0, SENSITIVITY+1, 0, MAX_BRIGHTNESS);
-  DELAY = map(analogVal, 0, SENSITIVITY+1, 20, 1);
+void LinearFlowing() {
+  val = map(analogVal, MIN_VAL, MAX_VAL, 0, BRIGHTNESS);
+  int dynamicDelay = map(analogVal, MIN_VAL, MAX_VAL, 20, 1);
   
-  for(int i = 0; i <= NUMLEDS; i++){
-    brightness[NUMLEDS-i] = brightness[NUMLEDS-i-1];
+  for (int i = 0; i < NUM_LEDS-1; i++) {
+    leds[i] = leds[i+1];
   }
+
+  leds[NUM_LEDS-1] = CHSV(dynamicHue += HUE_CHANGE, SATURATION, val);
+
+  delay(dynamicDelay);
+}
+
+void LinearReactive() {
+  val = map(analogVal, 0, MAX_VAL+1, 0, NUM_LEDS);
+
+  for(int i = 0; i < NUM_LEDS; i++) {
+    if (i <= val)
+      leds[i] = CHSV(HUE_INIT+(HUE_CHANGE*i), SATURATION, BRIGHTNESS);
+    else
+      leds[i].nscale8(10);
+  }
+}
+
+void BrightnessReactive() {
+  val = map(analogVal, MIN_VAL, MAX_VAL, 0, BRIGHTNESS);
   
-  for(int i = 0; i <= NUMLEDS; i++){
-    hue[NUMLEDS-i] = hue[NUMLEDS-i-1];
-  }
-  
-  brightness[0] = val;
-  byte hue = HUE_INIT;
-  for(int i = 0; i <= NUMLEDS; i++){
-    leds[i] = CHSV(hue += HUE_CHANGE, SATURATION, brightness[i]);
-  }
-  delay(DELAY);
-}
-
-void LinearReactive(){
-  byte val = map(analogVal, 0, SENSITIVITY+1, 0, NUMLEDS);
-  byte hue = HUE_INIT;
- 
-  for(int i = 0; i <= val; i++){
-    leds[i] = CHSV(hue += HUE_CHANGE, SATURATION, MAX_BRIGHTNESS);
-  }
-
-  for(int i = val+1; i <= NUMLEDS; i++){
-    leds[i].nscale8(10);
+  for(int i = 0; i < NUM_LEDS; i++) {
+    leds[i] = CHSV(HUE_INIT+(HUE_CHANGE*i), SATURATION, val);
   }
 }
 
-void BrightnessReactive(){
-  byte val = map(analogVal, 0, SENSITIVITY+1, 0, MAX_BRIGHTNESS);
-  byte hue = HUE_INIT;
-  for(int i = 0; i <= NUMLEDS; i++){
-    leds[i] = CHSV(hue += HUE_CHANGE, SATURATION, val);
+void CentreProgressive() {
+  val = map(analogVal, MIN_VAL, MAX_VAL, 0, NUM_LEDS/2);
+
+  for(int i = 0; i < NUM_LEDS/2; i++) {
+    if (i <= val) {
+      leds[(NUM_LEDS/2)+i] = CHSV(HUE_INIT+(HUE_CHANGE*i), SATURATION, BRIGHTNESS);
+      leds[(NUM_LEDS/2)-i] = CHSV(HUE_INIT+(HUE_CHANGE*i), SATURATION, BRIGHTNESS);
+    } else {
+      leds[(NUM_LEDS/2)+i].nscale8(10);
+      leds[(NUM_LEDS/2)-i].nscale8(10);
+    }
   }
 }
 
-void CentreProgressive(){
-  byte val = map(analogVal, 0, SENSITIVITY, 0, NUMLEDS/2);
-  byte hue = HUE_INIT;
-  for(int i = 0; i <= val; i++){
-    leds[(NUMLEDS/2)+i] = CHSV(hue += HUE_CHANGE, SATURATION, MAX_BRIGHTNESS);
-    leds[(NUMLEDS/2)-i] = CHSV(hue += HUE_CHANGE, SATURATION, MAX_BRIGHTNESS);
-  }
+void EdgeProgressive() {
+  val = map(analogVal, 0, MAX_VAL, 0, NUM_LEDS/2);
 
-  for(int i = val+1; i <= (NUMLEDS/2); i++){
-    leds[(NUMLEDS/2)+i].nscale8(10);
-    leds[(NUMLEDS/2)-i].nscale8(10);
-  }
-}
-
-void EdgeProgressive(){
-  byte val = map(analogVal, 0, SENSITIVITY, 0, NUMLEDS/2);
-  byte hue = HUE_INIT;
-  for(int i = 0; i <= val; i++){
-    leds[i] = CHSV(hue += HUE_CHANGE, SATURATION, MAX_BRIGHTNESS);
-    leds[NUMLEDS-i] = CHSV(hue += HUE_CHANGE, SATURATION, MAX_BRIGHTNESS);
-  }
-
-  for(int i=val+1; i<=(NUMLEDS/2); i++){
-    leds[i].nscale8(10);
-    leds[NUMLEDS-i].nscale8(10);
+  for(int i = 0; i < NUM_LEDS/2; i++) {
+    if (i <= val) {
+      leds[i] = CHSV(HUE_INIT+(HUE_CHANGE*i), SATURATION, BRIGHTNESS);
+      leds[NUM_LEDS-i] = CHSV(HUE_INIT+(HUE_CHANGE*i), SATURATION, BRIGHTNESS);
+    } else {
+      leds[i].nscale8(10);
+      leds[NUM_LEDS-i].nscale8(10);
+    }
   }
 }
